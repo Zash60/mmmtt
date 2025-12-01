@@ -12,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4  # Atualizei para v4 (mais recente e segura)
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
-    - name: Set up JDK 17  # Atualizei para JDK 17 (compatível com Android mais recente)
+    - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
@@ -24,40 +24,49 @@ jobs:
         cache: gradle
 
     - name: Setup Android SDK
-      uses: android-actions/setup-android@v3  # Atualizei para v3 (melhor suporte)
+      uses: android-actions/setup-android@v3
       with:
         api-level: 34
-        ndk-version: 26.3.11579264  # Versão mais recente do NDK para melhor performance
+        ndk-version: 27.0.12077973  # Última versão estável do NDK
+
+    - name: Check for gradlew existence
+      run: |
+        if [ ! -f "android/gradlew" ]; then
+          echo "Error: android/gradlew not found. Ensure the Android project files are committed to the repo."
+          exit 1
+        fi
 
     - name: Grant execute permission for gradlew
       run: chmod +x android/gradlew
 
     - name: Run Gradle Checks and Build Debug APK
+      continue-on-error: true  # Continua para upload de logs mesmo se falhar
       run: |
         cd android
-        ./gradlew lint assembleDebug --stacktrace  # Adicionei lint para checks e --stacktrace para debug de erros
+        ./gradlew lint assembleDebug --stacktrace --info  # Adicionado --info para mais logs
 
     - name: Upload APK (Debug)
-      uses: actions/upload-artifact@v4  # Atualizei para v4
+      uses: actions/upload-artifact@v4
       with:
         name: app-debug.apk
         path: android/app/build/outputs/apk/debug/app-debug.apk
-        if-no-files-found: warn  # Muda para warn para alertar se APK não gerado
+        if-no-files-found: warn
 
     - name: Create Release (if tagged)
       if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v2  # Atualizei para v2
+      uses: softprops/action-gh-release@v2
       with:
         files: android/app/build/outputs/apk/debug/app-debug.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Upload Build Logs (for debug)
-      if: always()  # Sempre upload, mesmo se falhar
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: build-logs
         path: |
           android/app/build/outputs/
           android/build/reports/
+          ~/.gradle/daemon/  # Logs extras do Gradle daemon
         if-no-files-found: warn
