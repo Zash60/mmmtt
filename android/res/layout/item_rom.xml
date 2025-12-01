@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <ImageView
+        android:id="@+id/rom_thumbnail"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:scaleType="centerCrop"
+        android:contentDescription="ROM Thumbnail" />
+
+    <TextView
+        android:id="@+id/rom_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="ROM Title"
+        android:textSize="14sp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:layout_marginTop="8dp" />
+
+</LinearLayout>
