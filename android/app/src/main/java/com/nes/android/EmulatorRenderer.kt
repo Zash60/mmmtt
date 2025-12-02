@@ -1,19 +1,31 @@
 package com.nes.android
 
+import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.nes.emulator.Console
 
 /**
- * Renderizador de frames do emulador em SurfaceView.
+ * Renderizador otimizado usando Bitmap para alta performance.
  */
 class EmulatorRenderer(val surfaceView: SurfaceView) : SurfaceHolder.Callback {
     
     private var renderThread: RenderThread? = null
     private var console: Console? = null
     private var isRunning = false
+    
+    // Bitmap buffer para desenhar a tela inteira de uma vez
+    private val frameBitmap = Bitmap.createBitmap(256, 240, Bitmap.Config.ARGB_8888)
+    private val srcRect = Rect(0, 0, 256, 240)
+    private val dstRect = Rect()
+    private val paint = Paint().apply { 
+        isFilterBitmap = false // Mantém o pixel art nítido (sem borrao)
+        isDither = false
+    }
     
     init {
         surfaceView.holder.addCallback(this)
@@ -24,6 +36,7 @@ class EmulatorRenderer(val surfaceView: SurfaceView) : SurfaceHolder.Callback {
     }
     
     fun start() {
+        if (isRunning) return
         isRunning = true
         renderThread = RenderThread(surfaceView.holder, this)
         renderThread?.start()
@@ -31,47 +44,53 @@ class EmulatorRenderer(val surfaceView: SurfaceView) : SurfaceHolder.Callback {
     
     fun stop() {
         isRunning = false
-        renderThread?.join()
+        try {
+            renderThread?.join()
+        } catch (e: InterruptedException) {
+            e.printStackTrace()
+        }
         renderThread = null
     }
     
     fun render(canvas: Canvas) {
         val console = console ?: return
         
+        // Pega os pixels brutos do emulador (IntArray)
         val frameBuffer = console.getFrameBuffer()
-        val width = 256
-        val height = 240
         
-        // Calcular escala para preencher a tela
+        // Transfere os pixels para o Bitmap (MUITO mais rápido que drawRect)
+        // O frameBuffer tem tamanho 256x240 = 61440 ints
+        if (frameBuffer.size >= 61440) {
+            frameBitmap.setPixels(frameBuffer, 0, 256, 0, 0, 256, 240)
+        }
+        
+        // Calcular escala para preencher a tela mantendo proporção
         val surfaceWidth = surfaceView.width
         val surfaceHeight = surfaceView.height
         
-        val scaleX = surfaceWidth.toFloat() / width
-        val scaleY = surfaceHeight.toFloat() / height
-        val scale = minOf(scaleX, scaleY)
+        val scale = minOf(
+            surfaceWidth.toFloat() / 256f,
+            surfaceHeight.toFloat() / 240f
+        )
         
-        val offsetX = (surfaceWidth - width * scale) / 2
-        val offsetY = (surfaceHeight - height * scale) / 2
+        val scaledWidth = (256 * scale).toInt()
+        val scaledHeight = (240 * scale).toInt()
         
-        // Renderizar frame buffer
-        val paint = Paint()
-        for (y in 0 until height) {
-            for (x in 0 until width) {
-                val pixel = frameBuffer[y * width + x]
-                paint.color = pixel
-                canvas.drawRect(
-                    offsetX + x * scale,
-                    offsetY + y * scale,
-                    offsetX + (x + 1) * scale,
-                    offsetY + (y + 1) * scale,
-                    paint
-                )
-            }
-        }
+        val offsetX = (surfaceWidth - scaledWidth) / 2
+        val offsetY = (surfaceHeight - scaledHeight) / 2
+        
+        // Define a área de destino na tela
+        dstRect.set(offsetX, offsetY, offsetX + scaledWidth, offsetY + scaledHeight)
+        
+        // Limpa o fundo (bordas pretas)
+        canvas.drawColor(Color.BLACK)
+        
+        // Desenha o jogo
+        canvas.drawBitmap(frameBitmap, srcRect, dstRect, paint)
     }
     
     override fun surfaceCreated(holder: SurfaceHolder) {
-        if (!isRunning) {
+        if (!isRunning && console != null) {
             start()
         }
     }
@@ -91,22 +110,29 @@ class EmulatorRenderer(val surfaceView: SurfaceView) : SurfaceHolder.Callback {
             while (isRunning) {
                 var canvas: Canvas? = null
                 try {
+                    // Tenta bloquear o canvas para desenho
                     canvas = holder.lockCanvas()
                     if (canvas != null) {
-                        // Limpar canvas
-                        canvas.drawColor(android.graphics.Color.BLACK)
-                        
-                        // Renderizar
                         renderer.render(canvas)
                     }
+                } catch (e: Exception) {
+                    e.printStackTrace()
                 } finally {
                     if (canvas != null) {
-                        holder.unlockCanvasAndPost(canvas)
+                        try {
+                            holder.unlockCanvasAndPost(canvas)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                 }
                 
-                // Limitar a 60 FPS
-                Thread.sleep(16)
+                // Limitar a ~60 FPS para não gastar bateria à toa
+                try {
+                    sleep(16)
+                } catch (e: InterruptedException) {
+                    // Ignora
+                }
             }
         }
     }
