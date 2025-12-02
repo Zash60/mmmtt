@@ -28,7 +28,7 @@ object ROMLoader {
         
         val mapperNumber = ((controlByte2 and 0xF0) shl 4) or ((controlByte1 and 0xF0) shr 4)
         val mirroring = controlByte1 and 0x01
-        val batteryBacked = (controlByte1 and 0x02) != 0
+        // Val batteryBacked removido pois não era utilizado aqui
         val trainer = (controlByte1 and 0x04) != 0
         
         // Calcular offset dos dados
