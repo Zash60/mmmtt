@@ -187,6 +187,7 @@ class NoiseChannel : AudioChannel() {
     var frequency = 0
     var shiftRegister = 1
     var lengthCounterLoad = 0
+    var envelope = 0  // Noise channel envelope (separate from base class)
     
     private val frequencyTable = intArrayOf(
         4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068

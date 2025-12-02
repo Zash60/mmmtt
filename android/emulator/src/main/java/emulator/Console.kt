@@ -151,7 +151,7 @@ class Console(val cartridge: Cartridge) {
         state.add(cpu.getStatus().toByte())
         
         // Salvar memória
-        for (byte in memory.ram) {
+        for (byte in memory.getRam()) {
             state.add(byte)
         }
         
@@ -171,11 +171,13 @@ class Console(val cartridge: Cartridge) {
         cpu.setStatus(state[offset++].toInt() and 0xFF)
         
         // Carregar memória
+        val ramCopy = ByteArray(0x800)
         for (i in 0 until 0x800) {
             if (offset < state.size) {
-                memory.ram[i] = state[offset++]
+                ramCopy[i] = state[offset++]
             }
         }
+        memory.setRam(ramCopy)
     }
     
     private fun Int.toBytes(): List<Byte> {

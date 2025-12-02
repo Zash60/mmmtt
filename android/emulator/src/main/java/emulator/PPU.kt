@@ -170,11 +170,11 @@ class PPU(val cartridge: Cartridge) {
     fun readRegister(address: Int): Int {
         return when (address and 0x7) {
             2 -> status
-            4 -> oam[oamAddress]
+            4 -> oam[oamAddress].toInt() and 0xFF
             7 -> {
-                val value = vram[address and 0x3FFF]
-                address += if ((control and 0x04) != 0) 32 else 1
-                value.toInt() and 0xFF
+                val value = vram[address and 0x3FFF].toInt() and 0xFF
+                this.address += if ((control and 0x04) != 0) 32 else 1
+                value
             }
             else -> 0
         }
@@ -187,10 +187,10 @@ class PPU(val cartridge: Cartridge) {
             3 -> oamAddress = value
             4 -> oam[oamAddress] = value.toByte()
             5 -> scroll[if (scroll[0] == 0) 0 else 1] = value
-            6 -> address = (address and 0xFF) or (value shl 8)
+            6 -> this.address = (address and 0xFF) or (value shl 8)
             7 -> {
-                vram[address and 0x3FFF] = value.toByte()
-                address += if ((control and 0x04) != 0) 32 else 1
+                vram[this.address and 0x3FFF] = value.toByte()
+                this.address += if ((control and 0x04) != 0) 32 else 1
             }
         }
     }

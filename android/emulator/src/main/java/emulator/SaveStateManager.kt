@@ -27,7 +27,7 @@ class SaveStateManager(val romPath: String, val saveDir: File) {
                 cpuState = console.cpu.run {
                     CPUState(pc, sp, a, x, y, getStatus(), cycles)
                 },
-                memoryState = console.memory.ram.copyOf(),
+                memoryState = console.memory.getRam(),
                 ppuState = console.ppu.run {
                     PPUState(control, mask, status, oamAddress, scroll.copyOf(), address, data)
                 }
@@ -68,9 +68,7 @@ class SaveStateManager(val romPath: String, val saveDir: File) {
                     }
                     
                     // Restaurar memória
-                    for (i in state.memoryState.indices) {
-                        console.memory.ram[i] = state.memoryState[i]
-                    }
+                    console.memory.setRam(state.memoryState)
                     
                     // Restaurar estado da PPU
                     console.ppu.apply {

@@ -31,6 +31,14 @@ class Memory(val cartridge: Cartridge) {
     var controllerData: Int = 0
     var controllerStrobe: Boolean = false
     
+    // Public getters and setters for RAM access
+    fun getRam(): ByteArray = ram.copyOf()
+    fun setRam(newRam: ByteArray) {
+        if (newRam.size == ram.size) {
+            newRam.copyInto(ram)
+        }
+    }
+    
     fun read(address: Int): Int {
         return when {
             address < 0x2000 -> ram[address and 0x7FF].toInt() and 0xFF
