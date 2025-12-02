@@ -80,7 +80,8 @@ class ThumbnailManager(val context: Context) {
         return bitmap
     }
     
-    private fun fetchThumbnailOnline(md5: String, romName: String): Bitmap? {
+    // Suprime avisos de parâmetros não usados pois a função é um stub para futuro
+    private fun fetchThumbnailOnline(@Suppress("UNUSED_PARAMETER") md5: String, @Suppress("UNUSED_PARAMETER") romName: String): Bitmap? {
         return try {
             // Usar API do IGDB ou similar para buscar thumbnail
             // Por enquanto, retornar null para usar thumbnail padrão
