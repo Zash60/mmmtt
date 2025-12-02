@@ -1,20 +1,24 @@
-cmake_minimum_required(VERSION 3.18)
-project(nes_emulator)
+cmake_minimum_required(VERSION 3.10)
 
+project(NES_Emulator)
+
+# Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Adicionar diretório de código-fonte
+# Add C++ subdirectory
 add_subdirectory(cpp)
 
-# Criar biblioteca compartilhada para Android
+# Android NDK setup
 if(ANDROID)
-    add_library(nes_emulator_native SHARED
-        cpp/src/jni_bridge.cpp
-    )
-    
-    target_link_libraries(nes_emulator_native
-        nes_emulator_core
-        log
-    )
+    # Set Android specific flags
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fexceptions -frtti")
+
+    # Find Android log library
+    find_library(ANDROID_LOG_LIB log)
+    if(ANDROID_LOG_LIB)
+        message(STATUS "Found Android log library: ${ANDROID_LOG_LIB}")
+    else()
+        message(WARNING "Android log library not found")
+    endif()
 endif()
