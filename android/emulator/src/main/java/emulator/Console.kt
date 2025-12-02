@@ -15,10 +15,11 @@ class Console(val cartridge: Cartridge) {
     var frameCount = 0
     var speed = 1.0f  // 1.0 = velocidade normal
     
-    // Controladores
-    var controller1 = 0
-    var controller2 = 0
-    var controllerStrobe = false
+    // Controladores (Renomeados para evitar conflito com métodos set)
+    private var _controller1 = 0
+    private var _controller2 = 0
+    private var _controllerStrobe = false
+    
     var controllerIndex1 = 0
     var controllerIndex2 = 0
     
@@ -91,25 +92,25 @@ class Console(val cartridge: Cartridge) {
     }
     
     fun setController1(value: Int) {
-        controller1 = value
-        if (controllerStrobe) {
+        _controller1 = value
+        if (_controllerStrobe) {
             controllerIndex1 = 0
         }
     }
     
     fun setController2(value: Int) {
-        controller2 = value
-        if (controllerStrobe) {
+        _controller2 = value
+        if (_controllerStrobe) {
             controllerIndex2 = 0
         }
     }
     
     fun readController1(): Int {
-        if (controllerStrobe) {
+        if (_controllerStrobe) {
             controllerIndex1 = 0
         }
         
-        val value = if ((controller1 shr controllerIndex1) and 1 != 0) 1 else 0
+        val value = if ((_controller1 shr controllerIndex1) and 1 != 0) 1 else 0
         controllerIndex1++
         if (controllerIndex1 > 7) {
             controllerIndex1 = 7
@@ -118,11 +119,11 @@ class Console(val cartridge: Cartridge) {
     }
     
     fun readController2(): Int {
-        if (controllerStrobe) {
+        if (_controllerStrobe) {
             controllerIndex2 = 0
         }
         
-        val value = if ((controller2 shr controllerIndex2) and 1 != 0) 1 else 0
+        val value = if ((_controller2 shr controllerIndex2) and 1 != 0) 1 else 0
         controllerIndex2++
         if (controllerIndex2 > 7) {
             controllerIndex2 = 7
@@ -131,7 +132,7 @@ class Console(val cartridge: Cartridge) {
     }
     
     fun setControllerStrobe(value: Boolean) {
-        controllerStrobe = value
+        _controllerStrobe = value
         if (value) {
             controllerIndex1 = 0
             controllerIndex2 = 0
