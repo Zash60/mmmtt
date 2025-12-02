@@ -2,6 +2,7 @@ package com.nes.android
 
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.SurfaceView
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
@@ -14,9 +15,10 @@ import androidx.fragment.app.Fragment
  */
 class EmulatorFragment : Fragment() {
     
-    private lateinit var surfaceView: android.view.SurfaceView
+    private lateinit var surfaceView: SurfaceView
     private lateinit var fpsText: TextView
     private lateinit var speedSeekBar: SeekBar
+    private var emulatorRenderer: EmulatorRenderer? = null
     private var fpsCounter = 0
     private var lastTime = System.currentTimeMillis()
     
@@ -35,11 +37,21 @@ class EmulatorFragment : Fragment() {
         fpsText = view.findViewById(R.id.fps_text)
         speedSeekBar = view.findViewById(R.id.speed_seekbar)
         
+        // Inicializar Renderizador
+        val mainActivity = activity as? MainActivity
+        val console = mainActivity?.console
+        
+        if (console != null) {
+            emulatorRenderer = EmulatorRenderer(surfaceView)
+            emulatorRenderer?.setConsole(console)
+            emulatorRenderer?.start()
+        }
+        
         // Configurar controles
         speedSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 val speed = 0.5f + (progress / 100f) * 1.5f
-                (activity as? MainActivity)?.console?.speed = speed
+                mainActivity?.console?.speed = speed
             }
             
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -48,26 +60,36 @@ class EmulatorFragment : Fragment() {
         
         // Botão de pausa
         view.findViewById<Button>(R.id.btn_pause).setOnClickListener {
-            val console = (activity as? MainActivity)?.console
-            if (console != null) {
-                console.paused = !console.paused
+            val currentConsole = mainActivity?.console
+            if (currentConsole != null) {
+                currentConsole.paused = !currentConsole.paused
             }
         }
         
         // Botão de reset
         view.findViewById<Button>(R.id.btn_reset).setOnClickListener {
-            val console = (activity as? MainActivity)?.console
-            console?.reset()
+            val currentConsole = mainActivity?.console
+            currentConsole?.reset()
         }
         
         // Botão de voltar
         view.findViewById<Button>(R.id.btn_back).setOnClickListener {
-            (activity as? MainActivity)?.stopEmulation()
+            mainActivity?.stopEmulation()
             parentFragmentManager.popBackStack()
         }
         
         // Iniciar contador de FPS
         startFPSCounter()
+    }
+    
+    override fun onDestroyView() {
+        super.onDestroyView()
+        emulatorRenderer?.stop()
+    }
+    
+    // Método auxiliar para acesso externo (usado no onGenericMotionEvent)
+    fun getSurfaceView(): SurfaceView {
+        return surfaceView
     }
     
     private fun startFPSCounter() {
