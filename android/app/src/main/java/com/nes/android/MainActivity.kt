@@ -1,6 +1,7 @@
 package com.nes.android
 
 import android.os.Bundle
+import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import androidx.appcompat.app.AppCompatActivity
@@ -13,7 +14,8 @@ import com.nes.emulator.ROMLoader
  */
 class MainActivity : AppCompatActivity() {
     
-    private var console: Console? = null
+    // Changed from private to public so Fragments can access it
+    var console: Console? = null
     private var emulatorRenderer: EmulatorRenderer? = null
     private var audioManager: AudioManager? = null
     private var controllerManager: ControllerManager? = null
@@ -84,20 +86,27 @@ class MainActivity : AppCompatActivity() {
     }
     
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        if (isEmulating && controllerManager != null) {
-            // Tentar processar como gamepad primeiro
-            if (event?.source?.and(android.view.InputDevice.TOOL_UNKNOWN) != 0) {
+        if (isEmulating && controllerManager != null && event != null) {
+            // Check if input comes from a Gamepad or Joystick
+            val isGamepad = (event.source and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
+                            (event.source and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
+            
+            if (isGamepad) {
                 return controllerManager!!.handleGamepadInput(keyCode, event)
             }
-            // Depois como teclado
+            // Otherwise process as keyboard
             return controllerManager!!.handleKeyDown(keyCode)
         }
         return super.onKeyDown(keyCode, event)
     }
     
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
-        if (isEmulating && controllerManager != null) {
-            if (event?.source?.and(android.view.InputDevice.TOOL_UNKNOWN) != 0) {
+        if (isEmulating && controllerManager != null && event != null) {
+            // Check if input comes from a Gamepad or Joystick
+            val isGamepad = (event.source and InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
+                            (event.source and InputDevice.SOURCE_JOYSTICK) == InputDevice.SOURCE_JOYSTICK
+
+            if (isGamepad) {
                 return controllerManager!!.handleGamepadInput(keyCode, event)
             }
             return controllerManager!!.handleKeyUp(keyCode)
