@@ -1,11 +1,13 @@
 package com.nes.android
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -20,6 +22,18 @@ class ROMListFragment : Fragment() {
     private lateinit var recyclerView: RecyclerView
     private lateinit var adapter: ROMAdapter
     private val romList = mutableListOf<ROMItem>()
+    
+    // Novo sistema de resultado de atividade
+    private val filePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uri = result.data?.data
+            if (uri != null) {
+                copyROMToStorage(uri)
+            }
+        }
+    }
     
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -50,7 +64,10 @@ class ROMListFragment : Fragment() {
     }
     
     private fun loadROMs() {
-        val romsDir = File(requireContext().getExternalFilesDir(null), "roms")
+        // Garantir que o contexto existe
+        val context = context ?: return
+        
+        val romsDir = File(context.getExternalFilesDir(null), "roms")
         if (!romsDir.exists()) {
             romsDir.mkdirs()
         }
@@ -75,26 +92,31 @@ class ROMListFragment : Fragment() {
     private fun openFilePicker() {
         val intent = Intent(Intent.ACTION_GET_CONTENT)
         intent.type = "*/*"
-        intent.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/octet-stream"))
-        startActivityForResult(intent, REQUEST_CODE_PICK_ROM)
-    }
-    
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        
-        if (requestCode == REQUEST_CODE_PICK_ROM && resultCode == android.app.Activity.RESULT_OK) {
-            val uri = data?.data ?: return
-            copyROMToStorage(uri)
-        }
+        // Tentar filtrar apenas arquivos .nes se possível, mas genericamente octet-stream funciona
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/octet-stream", "application/x-nes-rom"))
+        filePickerLauncher.launch(intent)
     }
     
     private fun copyROMToStorage(uri: Uri) {
         try {
-            val inputStream = requireContext().contentResolver.openInputStream(uri) ?: return
-            val romsDir = File(requireContext().getExternalFilesDir(null), "roms")
+            val context = requireContext()
+            val inputStream = context.contentResolver.openInputStream(uri) ?: return
+            val romsDir = File(context.getExternalFilesDir(null), "roms")
             romsDir.mkdirs()
             
-            val fileName = uri.lastPathSegment ?: "rom.nes"
+            // Tentar pegar o nome real do arquivo, senão usar padrão
+            var fileName = "imported_rom_${System.currentTimeMillis()}.nes"
+            
+            // Tenta pegar o nome do ContentResolver
+            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) {
+                        fileName = cursor.getString(nameIndex)
+                    }
+                }
+            }
+            
             val outputFile = File(romsDir, fileName)
             
             inputStream.use { input ->
@@ -106,11 +128,8 @@ class ROMListFragment : Fragment() {
             loadROMs()
         } catch (e: Exception) {
             e.printStackTrace()
+            android.widget.Toast.makeText(context, "Erro ao importar: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
         }
-    }
-    
-    companion object {
-        private const val REQUEST_CODE_PICK_ROM = 1001
     }
 }
 
@@ -146,9 +165,13 @@ class ROMAdapter(
             title.text = item.name
             
             // Carregar thumbnail
-            val thumbnailManager = ThumbnailManager(itemView.context)
-            val bitmap = thumbnailManager.getThumbnail(java.io.File(item.path), 200, 180)
-            thumbnail.setImageBitmap(bitmap)
+            try {
+                val thumbnailManager = ThumbnailManager(itemView.context)
+                val bitmap = thumbnailManager.getThumbnail(java.io.File(item.path), 200, 180)
+                thumbnail.setImageBitmap(bitmap)
+            } catch (e: Exception) {
+                // Falha silenciosa no thumbnail
+            }
             
             itemView.setOnClickListener {
                 onItemClick(item)
