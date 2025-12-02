@@ -14,7 +14,10 @@ class PPU(val cartridge: Cartridge) {
     // Memória de vídeo
     private val vram = ByteArray(0x4000)  // 16KB VRAM
     private val oam = ByteArray(256)      // OAM (Sprite data)
-    private val palette = IntArray(32)    // Paleta de cores
+    
+    // CORREÇÃO: O tamanho deve ser PALETTE_SIZE (64), não 32.
+    // Isso evita o crash "ArrayIndexOutOfBoundsException: length=32; index=32"
+    private val palette = IntArray(PALETTE_SIZE)    // Paleta de cores do sistema
     
     // Registradores
     var control: Int = 0
@@ -56,6 +59,7 @@ class PPU(val cartridge: Cartridge) {
     }
     
     private fun initPalette() {
+        // Agora palette tem tamanho 64, então este loop funcionará sem crashar
         for (i in 0 until PALETTE_SIZE) {
             palette[i] = nespalette[i]
         }
@@ -103,7 +107,18 @@ class PPU(val cartridge: Cartridge) {
             }
         }
         
-        frameBuffer[y * SCREEN_WIDTH + x] = palette[pixel and 0x1F]
+        // CORREÇÃO DE CORES:
+        // O NES usa 'pixel' (0-31) como endereço na Palette RAM ($3F00).
+        // Lá dentro está o índice real (0-63) da cor do sistema.
+        // Se usarmos palette[pixel], pegaremos sempre as primeiras 32 cores do sistema, o que está errado.
+        // Devemos ler da VRAM em 0x3F00 + pixel.
+        
+        val paletteRamIndex = pixel and 0x1F
+        // Lê o índice da cor armazenado na VRAM (Palette RAM)
+        val colorIndex = vram[0x3F00 + paletteRamIndex].toInt() and 0x3F
+        
+        // Pega a cor RGB real da paleta do sistema
+        frameBuffer[y * SCREEN_WIDTH + x] = palette[colorIndex]
     }
     
     private fun renderBackground(x: Int, y: Int): Int {
@@ -128,6 +143,8 @@ class PPU(val cartridge: Cartridge) {
         
         val bit = 7 - pixelX
         val pixel = ((chrData1 shr bit) and 1) shl 1 or ((chrData0 shr bit) and 1)
+        
+        if (pixel == 0) return 0 // Pixel transparente
         
         val paletteIndex = (attr shr (((tileY and 2) shl 1) + (tileX and 2))) and 3
         
@@ -189,7 +206,24 @@ class PPU(val cartridge: Cartridge) {
             5 -> scroll[if (scroll[0] == 0) 0 else 1] = value
             6 -> this.address = (address and 0xFF) or (value shl 8)
             7 -> {
-                vram[this.address and 0x3FFF] = value.toByte()
+                // Escreve na VRAM (incluindo tabelas de nome e Paletas em 0x3F00)
+                var addr = this.address and 0x3FFF
+                // Espelhamento da Palette RAM
+                if (addr >= 0x3F00 && addr < 0x4000) {
+                    addr = 0x3F00 + (addr and 0x1F)
+                    if ((addr and 0x03) == 0) {
+                        // Espelhamento do background color (0x3F00, 0x3F04, etc)
+                        vram[0x3F00] = value.toByte()
+                        vram[0x3F04] = value.toByte()
+                        vram[0x3F08] = value.toByte()
+                        vram[0x3F0C] = value.toByte()
+                        vram[0x3F10] = value.toByte() // Espelhos extras
+                        vram[0x3F14] = value.toByte()
+                        vram[0x3F18] = value.toByte()
+                        vram[0x3F1C] = value.toByte()
+                    }
+                }
+                vram[addr] = value.toByte()
                 this.address += if ((control and 0x04) != 0) 32 else 1
             }
         }
