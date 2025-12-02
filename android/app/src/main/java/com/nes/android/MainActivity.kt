@@ -106,10 +106,10 @@ class MainActivity : AppCompatActivity() {
         if (isEmulating && event != null && controllerManager != null) {
             // O SurfaceView está dentro do Fragment agora, então passamos o evento
             // mas precisamos achar a view atual.
-            // Para simplificar, passamos a view raiz da activity ou tentamos achar o fragmento.
             val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
             if (fragment is EmulatorFragment) {
                 val surfaceView = fragment.getSurfaceView()
+                // A verificação abaixo agora é válida pois getSurfaceView retorna nullable
                 if (surfaceView != null) {
                     return controllerManager!!.handleTouchInput(surfaceView, event)
                 }
