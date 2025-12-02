@@ -4,7 +4,8 @@ plugins {
 }
 
 android {
-    namespace 'emulator'
+    // Changed 'emulator' to 'com.nes.emulator' to be a valid Android package name
+    namespace 'com.nes.emulator'
     compileSdk 34
 
     defaultConfig {
