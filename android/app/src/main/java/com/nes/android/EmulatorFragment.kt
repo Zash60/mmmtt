@@ -87,9 +87,9 @@ class EmulatorFragment : Fragment() {
         emulatorRenderer?.stop()
     }
     
-    // Método auxiliar para acesso externo (usado no onGenericMotionEvent)
-    fun getSurfaceView(): SurfaceView {
-        return surfaceView
+    // CORREÇÃO: Retorna SurfaceView? (nullable) e verifica inicialização
+    fun getSurfaceView(): SurfaceView? {
+        return if (::surfaceView.isInitialized) surfaceView else null
     }
     
     private fun startFPSCounter() {
