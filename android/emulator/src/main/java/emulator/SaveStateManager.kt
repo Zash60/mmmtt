@@ -128,7 +128,7 @@ class SaveStateManager(val romPath: String, val saveDir: File) {
     }
 }
 
-@Serializable
+
 data class SaveState(
     val timestamp: Long,
     val cpuState: CPUState,
@@ -156,7 +156,7 @@ data class SaveState(
     }
 }
 
-@Serializable
+
 data class CPUState(
     val pc: Int,
     val sp: Int,
@@ -167,7 +167,7 @@ data class CPUState(
     val cycles: Long
 ) : Serializable
 
-@Serializable
+
 data class PPUState(
     val control: Int,
     val mask: Int,
